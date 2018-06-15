@@ -18,7 +18,7 @@ nameLength=The length of '{propertyName}' should be between {min} and {max}
 firstName=Firstname
 lastName=Surname
 
-example output:
+example violation-message-text:
 The length of 'Surname' should be between 2 and 100
 
 
