@@ -8,6 +8,8 @@ public class Person {
 
     @MySize(min = 2, max = 100, message = "{nameLength}", propertyName = "{lastName}")
     private String lastName;
+    
+    //...
 }
 
 messages in the db:
