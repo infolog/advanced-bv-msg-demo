@@ -30,7 +30,6 @@ import java.util.Map;
 
 @Vetoed
 public class AdvancedMessageInterpolator implements MessageInterpolator, Serializable {
-    private static final String DEFAULT_PLACEHOLDER = "{default}";
     private static final String EXPRESSION_START = "{";
     private static final String EXPRESSION_END = "}";
 
@@ -67,12 +66,8 @@ public class AdvancedMessageInterpolator implements MessageInterpolator, Seriali
 
             if (isSubexpressionToProcess(textToInterpolate, entry.getKey(), attributeValueAsString)) {
                 String subMessageKey = (String) entry.getValue();
-                if (subMessageKey.equals(DEFAULT_PLACEHOLDER)) {
-                    continue;
-                }
 
                 String interpolatedSubtext = interpolateText(subMessageKey, context, locale, messageInterpolator, messageResolvers);
-
                 if (!subMessageKey.equals(interpolatedSubtext)) {
                     result = result.replace(attributeValueAsString, interpolatedSubtext);
                 }

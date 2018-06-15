@@ -19,28 +19,36 @@
 package org.os890.bv;
 
 import javax.validation.Constraint;
+import javax.validation.OverridesAttribute;
 import javax.validation.Payload;
+import javax.validation.ReportAsSingleViolation;
+import javax.validation.constraints.Size;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 import static java.lang.annotation.ElementType.*;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-@Constraint(validatedBy = MySizeStringConstraintValidator.class)
+@ReportAsSingleViolation
+
+@Size
+@Constraint(validatedBy = {})
 @Target({FIELD, PARAMETER})
 @Retention(RUNTIME)
 public @interface MySize {
-    String message() default "{javax.validation.constraints.Size.message}";
+    String message();
+
+    String propertyName();
 
     Class<?>[] groups() default {};
 
     Class<? extends Payload>[] payload() default {};
 
+    @OverridesAttribute(constraint = Size.class, name = "min")
     int min() default 0;
 
+    @OverridesAttribute(constraint = Size.class, name = "max")
     int max() default Integer.MAX_VALUE;
-
-    String propertyName() default "{default}";
 
     @Target({FIELD, PARAMETER})
     @Retention(RUNTIME)
