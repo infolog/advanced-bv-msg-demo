@@ -20,6 +20,6 @@ package org.os890.bv.addon;
 
 import java.util.Locale;
 
-public interface MessageResolver {
+public interface MessageSourceAdapter {
     String resolveMessage(String key, Locale locale);
 }

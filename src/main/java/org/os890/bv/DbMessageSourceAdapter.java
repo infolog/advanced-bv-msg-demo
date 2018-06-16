@@ -18,7 +18,7 @@
  */
 package org.os890.bv;
 
-import org.os890.bv.addon.MessageResolver;
+import org.os890.bv.addon.MessageSourceAdapter;
 import org.os890.ejb.ViolationMessageService;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -26,7 +26,7 @@ import javax.inject.Inject;
 import java.util.Locale;
 
 @ApplicationScoped
-public class DbMessageResolver implements MessageResolver {
+public class DbMessageSourceAdapter implements MessageSourceAdapter {
     @Inject
     private ViolationMessageService violationMessageService;
 

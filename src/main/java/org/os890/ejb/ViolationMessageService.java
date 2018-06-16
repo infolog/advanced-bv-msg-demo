@@ -38,7 +38,11 @@ public class ViolationMessageService {
 
     public String findMessageTextFor(String key, Locale locale) {
         TypedQuery<ViolationMessage> query = entityManager.createQuery("select vm from ViolationMessage vm where vm.key = :msgKey and vm.locale = :locale", ViolationMessage.class);
-        query.setParameter("msgKey", key);
+        if (key.startsWith("{") && key.endsWith("}")) {
+            query.setParameter("msgKey", key.substring(1, key.length() - 1));
+        } else {
+            query.setParameter("msgKey", key);
+        }
         query.setParameter("locale", locale.toString());
 
         try {

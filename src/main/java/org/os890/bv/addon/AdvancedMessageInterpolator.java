@@ -18,13 +18,16 @@
  */
 package org.os890.bv.addon;
 
+import org.apache.deltaspike.core.api.message.LocaleResolver;
+import org.apache.deltaspike.core.api.message.MessageContext;
+import org.apache.deltaspike.core.api.message.MessageResolver;
 import org.apache.deltaspike.core.api.provider.BeanProvider;
+import org.apache.deltaspike.core.api.provider.DependentProvider;
 
 import javax.enterprise.inject.Vetoed;
 import javax.validation.MessageInterpolator;
 import javax.validation.metadata.ConstraintDescriptor;
 import java.io.Serializable;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -35,23 +38,27 @@ public class AdvancedMessageInterpolator implements MessageInterpolator, Seriali
 
     @Override
     public String interpolate(String messageTemplate, Context context) {
-        return interpolate(messageTemplate, context, Locale.getDefault());
+        return interpolate(messageTemplate, context, null);
     }
 
     @Override
     public String interpolate(String messageTemplate, Context context, Locale locale) {
         MessageInterpolator defaultMessageInterpolator = BeanProvider.getContextualReference(MessageInterpolatorFactory.class).getDefaultMessageInterpolator();
-        List<MessageResolver> messageResolvers = BeanProvider.getContextualReferences(MessageResolver.class, true);
+        DependentProvider<MessageContext> messageContextProvider = BeanProvider.getDependent(MessageContext.class);
 
-        String result = interpolateText(messageTemplate, context, locale, defaultMessageInterpolator, messageResolvers);
+        try {
+            String result = interpolateText(messageTemplate, context, locale, defaultMessageInterpolator, messageContextProvider.get());
 
-        if (result.contains(EXPRESSION_START) && result.contains(EXPRESSION_END)) {
-            return interpolateAdditionalSyntax(result, context, locale, defaultMessageInterpolator, messageResolvers);
+            if (result.contains(EXPRESSION_START) && result.contains(EXPRESSION_END)) {
+                return interpolateAdditionalSyntax(result, context, locale, defaultMessageInterpolator, messageContextProvider.get());
+            }
+            return result;
+        } finally {
+            messageContextProvider.destroy();
         }
-        return result;
     }
 
-    private String interpolateAdditionalSyntax(String textToInterpolate, Context context, Locale locale, MessageInterpolator messageInterpolator, List<MessageResolver> messageResolvers) {
+    private String interpolateAdditionalSyntax(String textToInterpolate, Context context, Locale locale, MessageInterpolator messageInterpolator, MessageContext messageContext) {
         String result = textToInterpolate;
         ConstraintDescriptor<?> constraintDescriptor = context.getConstraintDescriptor();
 
@@ -67,7 +74,7 @@ public class AdvancedMessageInterpolator implements MessageInterpolator, Seriali
             if (isSubexpressionToProcess(textToInterpolate, entry.getKey(), attributeValueAsString)) {
                 String subMessageKey = (String) entry.getValue();
 
-                String interpolatedSubtext = interpolateText(subMessageKey, context, locale, messageInterpolator, messageResolvers);
+                String interpolatedSubtext = interpolateText(subMessageKey, context, locale, messageInterpolator, messageContext);
                 if (!subMessageKey.equals(interpolatedSubtext)) {
                     result = result.replace(attributeValueAsString, interpolatedSubtext);
                 }
@@ -76,21 +83,27 @@ public class AdvancedMessageInterpolator implements MessageInterpolator, Seriali
         return result;
     }
 
-    private String interpolateText(String messageTemplate, Context context, Locale locale, MessageInterpolator defaultMessageInterpolator, List<MessageResolver> messageResolvers) {
-        String result = defaultMessageInterpolator.interpolate(messageTemplate, context, locale);
+    private String interpolateText(String messageTemplate, Context context, final Locale locale, MessageInterpolator defaultMessageInterpolator, MessageContext messageContext) {
+        String result = defaultMessageInterpolator.interpolate(messageTemplate, context, locale != null ? locale : messageContext.getLocale()); //always delegate first - simple bv-message can be resolved already
 
         if (messageTemplate.equals(result) && messageTemplate.startsWith(EXPRESSION_START) && messageTemplate.endsWith(EXPRESSION_END)) {
-            for (MessageResolver messageResolver : messageResolvers) {
-                result = messageResolver.resolveMessage(messageTemplate.substring(1, messageTemplate.length() - 1), locale);
-
-                if (result.contains(EXPRESSION_START) && result.contains(EXPRESSION_END)) {
-                    result = defaultMessageInterpolator.interpolate(result, context, locale); //do the default interpolation/replacement
-                }
-
-                if (!messageTemplate.equals(result)) {
-                    break;
-                }
+            if (locale != null) {
+                messageContext.localeResolver((LocaleResolver) () -> locale);
             }
+            messageContext.messageInterpolator((org.apache.deltaspike.core.api.message.MessageInterpolator) (messageText, arguments, currentLocal) -> defaultMessageInterpolator.interpolate(messageText, context, currentLocal));
+            final MessageResolver defaultMessageResolver = messageContext.getMessageResolver();
+
+            messageContext.messageResolver((MessageResolver) (currentMessageContext, currentMessageTemplate, category) -> {
+                for (MessageSourceAdapter messageSourceAdapter : BeanProvider.getContextualReferences(MessageSourceAdapter.class, true)) {
+                    String resolvedMessage = messageSourceAdapter.resolveMessage(currentMessageTemplate, currentMessageContext.getLocale());
+
+                    if (!currentMessageTemplate.equals(resolvedMessage)) {
+                        return resolvedMessage;
+                    }
+                }
+                return defaultMessageResolver.getMessage(messageContext, messageTemplate, null);
+            });
+            result = messageContext.message().template(messageTemplate).toString();
         }
         return result;
     }
