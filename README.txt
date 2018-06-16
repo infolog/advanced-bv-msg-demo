@@ -1,4 +1,8 @@
 goal:
+reduce the number of messages which just contain e.g. a different label (e.g. for the validated property).
+with jsf there is: javax.faces.validator.BeanValidator.MESSAGE={1}: {0}
+that just covers a very simple use-case and the label can't be in the middle of the message.
+furthermore, it's specific to jsf.
 
 usage:
 
